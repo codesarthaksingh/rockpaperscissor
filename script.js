@@ -784,6 +784,13 @@ class CyberGame {
     // Game Over Actions
     this.elements.gameOverReplayBtn.addEventListener('click', () => {
       this.synth.playClick();
+      
+      // Reset match metrics for the replay
+      this.currentRound = 1;
+      this.elements.roundNum.innerText = this.currentRound;
+      this.store.resetRuntimeScores();
+      this.renderScoreboard();
+      
       this.transitionScreen(this.elements.gameOver, this.elements.gameplay);
       this.resetMatchState();
       this.startTimer();
