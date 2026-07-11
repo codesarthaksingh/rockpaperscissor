@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Play Cyber Rock Paper Scissors - A modern futuristic cyber neon styled version of the classic game. Configurable game modes, statistics tracking, and Web Audio synthesis.">
+  <title>CYBER SHIELD // Rock Paper Scissors</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-purple">
+  <!-- Scanline filter overlay for retro cyber feel -->
+  <div class="scanlines" aria-hidden="true"></div>
+  
+  <div id="app-container">
+    
+    <!-- SPLASH SCREEN -->
+    <section id="splash-screen" class="screen active">
+      <div class="splash-content">
+        <div class="cyber-logo">
+          <svg class="logo-svg" viewBox="0 0 100 100" width="120" height="120">
+            <polygon points="50,5 95,28 95,72 50,95 5,72 5,28" class="hex-outline" />
+            <polygon points="50,15 85,33 85,67 50,85 15,67 15,33" class="hex-inner" />
+            <path d="M35,50 L50,35 L65,50 L50,65 Z" class="center-core" />
+          </svg>
+        </div>
+        <h1 class="glitch-title" data-text="CYBER SHIELD">CYBER SHIELD</h1>
+        <p class="subtitle">ROCK • PAPER • SCISSORS // PROTOCOL v1.0.0</p>
+        
+        <div class="boot-container">
+          <div class="boot-terminal" id="boot-terminal">
+            <div>&gt; INITIALIZING SECURITY INTRUSION CONTROLLER...</div>
+            <div>&gt; LOADING SYNTH AUDIO ENGINE...</div>
+            <div>&gt; LINKING LOCAL_STORAGE DATA SECTORS...</div>
+            <div>&gt; ESTABLISHING NEURAL FEED... READY.</div>
+          </div>
+          <div class="progress-bar-wrapper">
+            <div class="progress-bar-fill" id="boot-progress-bar"></div>
+          </div>
+        </div>
+        <button id="splash-continue-btn" class="cyber-btn hidden">
+          <span class="btn-text">INITIALIZE CORE</span>
+          <span class="btn-glitch" aria-hidden="true">_INITIALIZE_</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- MAIN MENU SCREEN -->
+    <section id="main-menu-screen" class="screen hidden">
+      <div class="menu-container">
+        <header class="menu-header">
+          <div class="menu-tag">SYS.LOC: MAIN_MENU</div>
+          <h2 class="glowing-header">CHOOSE YOUR PROTOCOL</h2>
+        </header>
+
+        <main class="menu-content">
+          <!-- Player config -->
+          <div class="input-group">
+            <label for="player-name-input">PILOT IDENTIFICATION (NAME)</label>
+            <div class="input-wrapper">
+              <input type="text" id="player-name-input" maxlength="12" placeholder="USER_01" value="USER_01">
+              <span class="input-glow"></span>
+            </div>
+          </div>
+
+          <!-- Mode selectors -->
+          <div class="config-section">
+            <span class="config-label">CONFLICT MODE</span>
+            <div class="mode-options" role="radiogroup" aria-label="Game Mode">
+              <button class="mode-btn active" data-mode="unlimited" role="radio" aria-checked="true">
+                <span class="mode-title">UNLIMITED</span>
+                <span class="mode-desc">Continuous Training</span>
+              </button>
+              <button class="mode-btn" data-mode="bo3" role="radio" aria-checked="false">
+                <span class="mode-title">BEST OF 3</span>
+                <span class="mode-desc">First to 2 Victories</span>
+              </button>
+              <button class="mode-btn" data-mode="bo5" role="radio" aria-checked="false">
+                <span class="mode-title">BEST OF 5</span>
+                <span class="mode-desc">First to 3 Victories</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Extra toggles -->
+          <div class="config-section row-layout">
+            <div class="toggle-control">
+              <span class="config-label">DECISION TIMER (10s)</span>
+              <p class="config-sublabel">Automated selection on expiration</p>
+            </div>
+            <label class="cyber-switch" for="timer-toggle">
+              <input type="checkbox" id="timer-toggle" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Start Action -->
+          <button id="start-game-btn" class="cyber-btn primary-pulse">
+            <span class="btn-text">START SIMULATION</span>
+            <span class="btn-glitch" aria-hidden="true">_START_</span>
+          </button>
+        </main>
+
+        <footer class="menu-footer">
+          <div class="rules-box">
+            <div class="rules-title">// SIMULATION DECISION RULES:</div>
+            <ul class="rules-list">
+              <li><strong>SHIELD (Rock)</strong> neutralizes <strong>CLAW (Scissors)</strong></li>
+              <li><strong>CLAW (Scissors)</strong> severs <strong>GRID (Paper)</strong></li>
+              <li><strong>GRID (Paper)</strong> overrides <strong>SHIELD (Rock)</strong></li>
+            </ul>
+          </div>
+        </footer>
+      </div>
+    </section>
+
+    <!-- GAMEPLAY SCREEN -->
+    <section id="gameplay-screen" class="screen hidden">
+      <div class="gameplay-container">
+        
+        <!-- Game HUD Header -->
+        <header class="game-hud">
+          <div class="hud-left">
+            <div class="hud-pilot">
+              <span class="hud-label">PILOT:</span>
+              <span id="hud-player-name" class="hud-value">USER_01</span>
+            </div>
+            <div class="hud-mode">
+              <span class="hud-label">MODE:</span>
+              <span id="hud-game-mode" class="hud-value">UNLIMITED</span>
+            </div>
+          </div>
+          
+          <div class="hud-center">
+            <div class="hud-logo">CYBER SHIELD</div>
+          </div>
+          
+          <div class="hud-right">
+            <button id="hud-stats-btn" class="hud-icon-btn" aria-label="Open Statistics">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+              </svg>
+            </button>
+            <button id="hud-settings-btn" class="hud-icon-btn" aria-label="Open Settings">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+            <button id="hud-sound-btn" class="hud-icon-btn" aria-label="Toggle Sound">
+              <!-- Mute / Unmute dynamic icons in JS -->
+              <svg id="sound-on-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+              <svg id="sound-off-svg" class="hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Scoreboard Component -->
+        <section class="scoreboard">
+          <div class="score-card player-score-card">
+            <span class="score-label" id="score-player-label">PILOT</span>
+            <span class="score-value" id="player-score">0</span>
+            <div class="score-bar"><div class="score-bar-fill" id="player-win-indicator"></div></div>
+          </div>
+          
+          <div class="round-indicator-box">
+            <span class="round-title">ROUND</span>
+            <span class="round-number" id="round-num">1</span>
+            <span class="round-limit" id="best-of-verdict">UNLIMITED</span>
+          </div>
+          
+          <div class="score-card computer-score-card">
+            <span class="score-label">CPU_AI</span>
+            <span class="score-value" id="computer-score">0</span>
+            <div class="score-bar"><div class="score-bar-fill" id="computer-win-indicator"></div></div>
+          </div>
+        </section>
+
+        <!-- Decision Timer Bar -->
+        <div id="gameplay-timer-container" class="timer-container">
+          <div class="timer-bar-fill" id="timer-progress"></div>
+        </div>
+
+        <!-- The Battlefield -->
+        <section class="battlefield">
+          <!-- Canvas for victory particle animations -->
+          <canvas id="particles-canvas"></canvas>
+          
+          <!-- Player Choice Hologram Card -->
+          <div class="battle-card" id="player-battle-card">
+            <div class="card-glow-overlay"></div>
+            <div class="card-inner">
+              <span class="card-side">PILOT SIDE</span>
+              <div class="card-placeholder" id="player-card-icon-placeholder">
+                <span class="pulse-text">WAITING FOR MOVE</span>
+              </div>
+              <div class="card-move-info hidden" id="player-card-move-info">
+                <h3 class="move-title" id="player-move-title">SHIELD</h3>
+                <span class="move-detail">TYPE: KINETIC_BLOCK</span>
+              </div>
+            </div>
+            <div class="card-status-bar">STATUS: SYNCED</div>
+          </div>
+
+          <!-- Result Combat Status Panel -->
+          <div class="combat-status">
+            <div class="versus-text" id="versus-text">VS</div>
+            <div id="combat-banner" class="combat-banner hidden">
+              <div class="glitch-text-sm" id="combat-result-text">MATCH SUCCESS</div>
+              <div class="combat-explanation" id="combat-explanation-text">SHIELD blocks CLAW</div>
+            </div>
+          </div>
+
+          <!-- Computer Choice Hologram Card -->
+          <div class="battle-card" id="computer-battle-card">
+            <div class="card-glow-overlay"></div>
+            <div class="card-inner">
+              <span class="card-side">CPU CORE</span>
+              <div class="card-placeholder" id="computer-card-icon-placeholder">
+                <div class="matrix-loader">
+                  <div class="matrix-bar"></div>
+                  <div class="matrix-bar"></div>
+                  <div class="matrix-bar"></div>
+                </div>
+                <span class="pulse-text">CALCULATING MOVE</span>
+              </div>
+              <div class="card-move-info hidden" id="computer-card-move-info">
+                <h3 class="move-title" id="computer-move-title">CLAW</h3>
+                <span class="move-detail">TYPE: LASER_BLADE</span>
+              </div>
+            </div>
+            <div class="card-status-bar">STATUS: SECURE</div>
+          </div>
+        </section>
+
+        <!-- Player Choices Buttons Panel -->
+        <section class="choice-controls" id="choices-panel">
+          <button class="choice-btn" data-choice="Rock" aria-label="Choose Rock">
+            <span class="choice-key-indicator">1</span>
+            <div class="choice-icon-box">
+              <svg viewBox="0 0 24 24" class="choice-svg text-cyan">
+                <!-- Cyber Shield Icon -->
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2"/>
+                <path d="M12 6v10" stroke="currentColor" stroke-width="2"/>
+                <path d="M9 11h6" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="choice-meta">
+              <span class="choice-name">SHIELD</span>
+              <span class="choice-sub">ROCK [1]</span>
+            </div>
+          </button>
+          
+          <button class="choice-btn" data-choice="Paper" aria-label="Choose Paper">
+            <span class="choice-key-indicator">2</span>
+            <div class="choice-icon-box">
+              <svg viewBox="0 0 24 24" class="choice-svg text-purple">
+                <!-- Grid / Matrix Data Icon -->
+                <rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                <path d="M9 3v18" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+                <path d="M15 3v18" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+                <path d="M3 9h18" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+                <path d="M3 15h18" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+                <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="choice-meta">
+              <span class="choice-name">GRID</span>
+              <span class="choice-sub">PAPER [2]</span>
+            </div>
+          </button>
+          
+          <button class="choice-btn" data-choice="Scissors" aria-label="Choose Scissors">
+            <span class="choice-key-indicator">3</span>
+            <div class="choice-icon-box">
+              <svg viewBox="0 0 24 24" class="choice-svg text-danger">
+                <!-- Laser Claw / Scissors Icon -->
+                <path d="M6 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" fill="none" stroke="currentColor" stroke-width="2"/>
+                <path d="M6 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" fill="none" stroke="currentColor" stroke-width="2"/>
+                <path d="M20 4L8.5 11" stroke="currentColor" stroke-width="2"/>
+                <path d="M20 20L8.5 13" stroke="currentColor" stroke-width="2"/>
+                <path d="M16 12l5 0" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="choice-meta">
+              <span class="choice-name">CLAW</span>
+              <span class="choice-sub">SCISSORS [3]</span>
+            </div>
+          </button>
+        </section>
+
+        <!-- Round Action Controls (Play Again, Reset) -->
+        <section class="gameplay-controls hidden" id="gameplay-actions">
+          <button id="next-round-btn" class="cyber-btn primary-pulse">
+            <span class="btn-text">ENGAGE NEXT ROUND [Space]</span>
+            <span class="btn-glitch" aria-hidden="true">_NEXT_</span>
+          </button>
+          <button id="abort-match-btn" class="cyber-btn secondary-btn">
+            <span class="btn-text">ABORT MATCH</span>
+            <span class="btn-glitch" aria-hidden="true">_ABORT_</span>
+          </button>
+        </section>
+
+        <!-- History Log Panel -->
+        <aside class="history-log">
+          <div class="history-header">
+            <span class="history-title">// MATCH HISTORIES:</span>
+            <button id="clear-history-btn" class="clear-history-link" aria-label="Clear matches history">CLEAR HISTORY</button>
+          </div>
+          <div class="history-scroll" id="history-container">
+            <div class="history-empty-message">No engagement logs recorded yet.</div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- GAME OVER SCREEN -->
+    <section id="game-over-screen" class="screen hidden">
+      <div class="game-over-container">
+        <header class="game-over-header">
+          <div class="hud-label">// PROTOCOL COMPLETED</div>
+          <h2 class="verdict-title text-success" id="game-over-verdict">VICTORY ACHIEVED</h2>
+        </header>
+
+        <main class="game-over-stats">
+          <div class="over-stats-grid">
+            <div class="over-stat-box">
+              <span class="over-stat-label">PILOT FINAL</span>
+              <span class="over-stat-value text-primary" id="over-player-score">3</span>
+            </div>
+            <div class="over-stat-box">
+              <span class="over-stat-label">CPU FINAL</span>
+              <span class="over-stat-value text-danger" id="over-computer-score">1</span>
+            </div>
+            <div class="over-stat-box">
+              <span class="over-stat-label">ROUNDS PLAYED</span>
+              <span class="over-stat-value" id="over-rounds-total">4</span>
+            </div>
+            <div class="over-stat-box">
+              <span class="over-stat-label">MATCH RATING</span>
+              <span class="over-stat-value text-success" id="over-rating-percent">75%</span>
+            </div>
+          </div>
+
+          <div class="final-evaluation-box">
+            <div class="eval-title">CORE STATUS EVALUATION:</div>
+            <p class="eval-desc" id="game-over-evaluation-text">Target sector successfully infiltrated and secured.</p>
+          </div>
+        </main>
+
+        <footer class="game-over-actions">
+          <button id="game-over-replay-btn" class="cyber-btn primary-pulse">
+            <span class="btn-text">REBOOT SYSTEM [Space]</span>
+            <span class="btn-glitch" aria-hidden="true">_REBOOT_</span>
+          </button>
+          <button id="game-over-menu-btn" class="cyber-btn secondary-btn">
+            <span class="btn-text">TERMINATE CONNECTION</span>
+            <span class="btn-glitch" aria-hidden="true">_TERMINATE_</span>
+          </button>
+        </footer>
+      </div>
+    </section>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="modal hidden" role="dialog" aria-labelledby="settings-modal-title" aria-modal="true">
+      <div class="modal-overlay" id="settings-overlay"></div>
+      <div class="modal-content">
+        <header class="modal-header">
+          <h3 id="settings-modal-title" class="modal-title">// SETTINGS_CONTROLLER</h3>
+          <button id="settings-close-btn" class="modal-close-icon" aria-label="Close settings">&times;</button>
+        </header>
+
+        <main class="modal-body">
+          <!-- Theme Switcher -->
+          <div class="modal-section">
+            <span class="section-heading">NEON MATRIX THEME</span>
+            <div class="theme-options">
+              <button class="theme-btn theme-btn-purple active" data-theme="purple" aria-label="Cyber Purple Theme">
+                <span class="theme-color-dot color-purple"></span> PURPLE
+              </button>
+              <button class="theme-btn theme-btn-cyan" data-theme="cyan" aria-label="Cyan Grid Theme">
+                <span class="theme-color-dot color-cyan"></span> CYAN
+              </button>
+              <button class="theme-btn theme-btn-green" data-theme="green" aria-label="Toxic Green Theme">
+                <span class="theme-color-dot color-green"></span> TOXIC
+              </button>
+              <button class="theme-btn theme-btn-pink" data-theme="pink" aria-label="Neon Pink Theme">
+                <span class="theme-color-dot color-pink"></span> PINK
+              </button>
+            </div>
+          </div>
+
+          <!-- Sound sliders -->
+          <div class="modal-section">
+            <div class="label-row">
+              <span class="section-heading">SYNTH VOLUME</span>
+              <span id="volume-indicator-value">70%</span>
+            </div>
+            <div class="slider-container">
+              <input type="range" id="volume-slider" min="0" max="100" value="70">
+              <span class="slider-fill"></span>
+            </div>
+          </div>
+
+          <!-- Mid game mode adjustment / info -->
+          <div class="modal-section">
+            <span class="section-heading">MATCH RULES CONTROLLER</span>
+            <div class="settings-mode-info">
+              <p>Mode settings can only be altered in the main console interface. Return to the main menu to change match modes.</p>
+            </div>
+          </div>
+          
+          <!-- System Flush -->
+          <div class="modal-section border-top">
+            <button id="settings-reset-all-btn" class="cyber-btn danger-btn">
+              <span class="btn-text">FLUSH LOCAL DATA</span>
+              <span class="btn-glitch" aria-hidden="true">_FLUSH_</span>
+            </button>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- STATISTICS MODAL -->
+    <div id="stats-modal" class="modal hidden" role="dialog" aria-labelledby="stats-modal-title" aria-modal="true">
+      <div class="modal-overlay" id="stats-overlay"></div>
+      <div class="modal-content">
+        <header class="modal-header">
+          <h3 id="stats-modal-title" class="modal-title">// STATS_LOGS</h3>
+          <button id="stats-close-btn" class="modal-close-icon" aria-label="Close statistics">&times;</button>
+        </header>
+
+        <main class="modal-body">
+          
+          <!-- General Stats Metrics -->
+          <div class="stats-overview-grid">
+            <div class="stat-metric-box">
+              <span class="metric-value" id="stats-total-rounds">0</span>
+              <span class="metric-label">ENGAGEMENTS</span>
+            </div>
+            <div class="stat-metric-box">
+              <span class="metric-value text-success" id="stats-wins">0</span>
+              <span class="metric-label">VICTORIES</span>
+            </div>
+            <div class="stat-metric-box">
+              <span class="metric-value text-danger" id="stats-losses">0</span>
+              <span class="metric-label">DEFEATS</span>
+            </div>
+            <div class="stat-metric-box">
+              <span class="metric-value text-info" id="stats-draws">0</span>
+              <span class="metric-label">DRAWS</span>
+            </div>
+          </div>
+
+          <!-- Win Rate Chart Meter -->
+          <div class="modal-section">
+            <div class="label-row">
+              <span class="section-heading">VICTORY MATRIX SUCCESS RATE</span>
+              <span class="stats-winrate-text text-success" id="stats-winrate">0%</span>
+            </div>
+            <div class="winrate-gauge-container">
+              <div class="winrate-gauge-fill" id="stats-winrate-progress"></div>
+            </div>
+          </div>
+
+          <!-- Streaks and move distribution -->
+          <div class="modal-section row-layout gap-10">
+            <div class="half-width-box">
+              <span class="section-heading">STREAK LOG</span>
+              <div class="streak-item">
+                <span class="streak-label">MAX WIN STREAK:</span>
+                <span class="streak-val text-success" id="stats-max-win-streak">0</span>
+              </div>
+              <div class="streak-item">
+                <span class="streak-label">CURRENT STREAK:</span>
+                <span class="streak-val" id="stats-current-streak">0</span>
+              </div>
+            </div>
+            <div class="half-width-box">
+              <span class="section-heading">MOVE FREQUENCIES</span>
+              <div class="bar-chart-row">
+                <span class="bar-chart-label">SHIELD:</span>
+                <div class="bar-chart-track"><div class="bar-chart-fill color-cyan" id="stats-freq-rock" style="width: 0%;"></div></div>
+                <span class="bar-chart-val" id="stats-freq-rock-val">0</span>
+              </div>
+              <div class="bar-chart-row">
+                <span class="bar-chart-label">GRID:</span>
+                <div class="bar-chart-track"><div class="bar-chart-fill color-purple" id="stats-freq-paper" style="width: 0%;"></div></div>
+                <span class="bar-chart-val" id="stats-freq-paper-val">0</span>
+              </div>
+              <div class="bar-chart-row">
+                <span class="bar-chart-label">CLAW:</span>
+                <div class="bar-chart-track"><div class="bar-chart-fill color-danger" id="stats-freq-scissors" style="width: 0%;"></div></div>
+                <span class="bar-chart-val" id="stats-freq-scissors-val">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section border-top">
+            <button id="stats-reset-btn" class="cyber-btn danger-btn">
+              <span class="btn-text">PURGE STATISTICS</span>
+              <span class="btn-glitch" aria-hidden="true">_PURGE_</span>
+            </button>
+          </div>
+        </main>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Game Script -->
+  <script src="script.js"></script>
+</body>
+</html>
