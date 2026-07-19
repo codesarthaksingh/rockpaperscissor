@@ -188,6 +188,8 @@ class CyberGameStats {
     // Default statistics dataset
     this.data = {
       playerName: 'USER_01',
+      player2Name: 'USER_02',
+      gameType: 'single',
       theme: 'purple',
       volume: 70,
       timerEnabled: true,
@@ -718,6 +720,12 @@ class CyberGame {
 
       // Menu controls
       playerNameInput: document.getElementById('player-name-input'),
+      player2NameInput: document.getElementById('player-2-name-input') || document.getElementById('player2-name-input'),
+      typeButtons: document.querySelectorAll('.type-btn'),
+      pilotsConfigGrid: document.getElementById('pilots-config-grid'),
+      pilot1NameLabel: document.getElementById('pilot1-name-label'),
+      pilot2InputGroup: document.getElementById('pilot2-input-group'),
+      aiDifficultySection: document.getElementById('ai-difficulty-section'),
       modeButtons: document.querySelectorAll('.mode-btn'),
       timerToggle: document.getElementById('timer-toggle'),
       startGameBtn: document.getElementById('start-game-btn'),
@@ -725,6 +733,10 @@ class CyberGame {
 
       // Gameplay HUD
       hudPlayerName: document.getElementById('hud-player-name'),
+      hudPlayer2Name: document.getElementById('hud-player2-name'),
+      hudPilot1Label: document.getElementById('hud-pilot-1-label'),
+      hudPilot2Container: document.getElementById('hud-pilot-2-container'),
+      hudDifficultyContainer: document.getElementById('hud-difficulty-container'),
       hudGameMode: document.getElementById('hud-game-mode'),
       hudAiDifficulty: document.getElementById('hud-ai-difficulty'),
       hudExitBtn: document.getElementById('hud-exit-btn'),
@@ -737,6 +749,8 @@ class CyberGame {
       // Scoreboard
       playerScore: document.getElementById('player-score'),
       computerScore: document.getElementById('computer-score'),
+      scorePlayerLabel: document.getElementById('score-player-label'),
+      scoreComputerLabel: document.getElementById('score-computer-label'),
       roundNum: document.getElementById('round-num'),
       bestOfVerdict: document.getElementById('best-of-verdict'),
       playerWinIndicator: document.getElementById('player-win-indicator'),
@@ -748,11 +762,13 @@ class CyberGame {
 
       // Battlefield Cards
       playerBattleCard: document.getElementById('player-battle-card'),
+      cardPlayerLabel: document.getElementById('card-player-label'),
       playerPlaceholder: document.getElementById('player-card-icon-placeholder'),
       playerMoveInfo: document.getElementById('player-card-move-info'),
       playerMoveTitle: document.getElementById('player-move-title'),
       
       computerBattleCard: document.getElementById('computer-battle-card'),
+      cardComputerLabel: document.getElementById('card-computer-label'),
       computerPlaceholder: document.getElementById('computer-card-icon-placeholder'),
       computerMoveInfo: document.getElementById('computer-card-move-info'),
       computerMoveTitle: document.getElementById('computer-move-title'),
@@ -763,6 +779,7 @@ class CyberGame {
       combatExplanationText: document.getElementById('combat-explanation-text'),
 
       // Player choice panel
+      choicesTurnInstruction: document.getElementById('choices-turn-instruction'),
       choicesPanel: document.getElementById('choices-panel'),
       choiceButtons: document.querySelectorAll('.choice-btn'),
 
@@ -825,8 +842,11 @@ class CyberGame {
   _applyConfig() {
     const data = this.store.data;
     
-    // Player Name
+    // Player Names
     this.elements.playerNameInput.value = data.playerName;
+    if (this.elements.player2NameInput) {
+      this.elements.player2NameInput.value = data.player2Name || 'USER_02';
+    }
     
     // Color Theme
     this._setTheme(data.theme);
@@ -838,6 +858,31 @@ class CyberGame {
 
      // Timer switch
     this.elements.timerToggle.checked = data.timerEnabled;
+
+    // Game Type Config
+    const type = data.gameType || 'single';
+    this.elements.typeButtons.forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.getAttribute('data-type') === type) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+      } else {
+        btn.setAttribute('aria-checked', 'false');
+      }
+    });
+
+    // Update Main Menu input fields layout based on Game Type
+    if (type === 'dual') {
+      this.elements.pilotsConfigGrid.classList.add('dual-layout');
+      this.elements.pilot1NameLabel.innerText = "PILOT 1 IDENTIFICATION (NAME)";
+      this.elements.pilot2InputGroup.classList.remove('hidden');
+      this.elements.aiDifficultySection.classList.add('hidden');
+    } else {
+      this.elements.pilotsConfigGrid.classList.remove('dual-layout');
+      this.elements.pilot1NameLabel.innerText = "PILOT IDENTIFICATION (NAME)";
+      this.elements.pilot2InputGroup.classList.add('hidden');
+      this.elements.aiDifficultySection.classList.remove('hidden');
+    }
 
     // Difficulty Core
     const diff = data.aiDifficulty || 'normal';
@@ -870,6 +915,17 @@ class CyberGame {
     this.elements.splashBtn.addEventListener('click', () => {
       this.synth.playClick();
       this.transitionScreen(this.elements.splash, this.elements.menu);
+    });
+
+    // Menu game type buttons configuration
+    this.elements.typeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.synth.playClick();
+        const type = btn.getAttribute('data-type');
+        this.store.data.gameType = type;
+        this.store.save();
+        this._applyConfig(); // Re-render name fields layout & diff options
+      });
     });
 
     // Menu mode buttons configuration
@@ -952,7 +1008,17 @@ class CyberGame {
       btn.addEventListener('click', () => {
         if (!this.canPlayerChoose || this.isRoundInProgress) return;
         const choice = btn.getAttribute('data-choice');
-        this.playRound(choice);
+        const gameType = this.store.data.gameType || 'single';
+        if (gameType === 'single') {
+          this.playRound(choice);
+        } else {
+          // In 2P mode, first click assigns to P1, second click to P2
+          if (this.p1Choice === null) {
+            this.handlePlayerChoice(choice, 1);
+          } else if (this.p2Choice === null) {
+            this.handlePlayerChoice(choice, 2);
+          }
+        }
       });
     });
 
@@ -1078,14 +1144,34 @@ class CyberGame {
       return;
     }
 
-    // 2. Choice shortcuts: 1 (Rock), 2 (Paper), 3 (Scissors)
+    // 2. Choice shortcuts
     if (this.canPlayerChoose && !this.isRoundInProgress) {
-      if (e.key === '1') {
-        this.playRound('Rock');
-      } else if (e.key === '2') {
-        this.playRound('Paper');
-      } else if (e.key === '3') {
-        this.playRound('Scissors');
+      const gameType = this.store.data.gameType || 'single';
+      if (gameType === 'single') {
+        if (e.key === '1') {
+          this.playRound('Rock');
+        } else if (e.key === '2') {
+          this.playRound('Paper');
+        } else if (e.key === '3') {
+          this.playRound('Scissors');
+        }
+      } else {
+        // Pilot 1 Keys (A / S / D)
+        if (e.key.toLowerCase() === 'a') {
+          this.handlePlayerChoice('Rock', 1);
+        } else if (e.key.toLowerCase() === 's') {
+          this.handlePlayerChoice('Paper', 1);
+        } else if (e.key.toLowerCase() === 'd') {
+          this.handlePlayerChoice('Scissors', 1);
+        }
+        // Pilot 2 Keys (J / K / L)
+        else if (e.key.toLowerCase() === 'j') {
+          this.handlePlayerChoice('Rock', 2);
+        } else if (e.key.toLowerCase() === 'k') {
+          this.handlePlayerChoice('Paper', 2);
+        } else if (e.key.toLowerCase() === 'l') {
+          this.handlePlayerChoice('Scissors', 2);
+        }
       }
     }
 
@@ -1190,8 +1276,16 @@ class CyberGame {
     // Read and save Pilot identification
     let pilotName = this.elements.playerNameInput.value.trim().toUpperCase();
     if (!pilotName) pilotName = 'USER_01';
-    
     this.store.data.playerName = pilotName;
+
+    const gameType = this.store.data.gameType || 'single';
+    let pilot2Name = 'USER_02';
+    if (gameType === 'dual') {
+      pilot2Name = this.elements.player2NameInput.value.trim().toUpperCase();
+      if (!pilot2Name) pilot2Name = 'USER_02';
+      this.store.data.player2Name = pilot2Name;
+    }
+
     this.store.data.timerEnabled = this.elements.timerToggle.checked;
     this.store.save();
 
@@ -1201,6 +1295,8 @@ class CyberGame {
     // Reset transient round variables
     this.currentRound = 1;
     this.playerMoveHistory = [];
+    this.p1Choice = null;
+    this.p2Choice = null;
     if (this.aiPredictor) this.aiPredictor.reset();
 
     this.store.resetRuntimeScores();
@@ -1222,13 +1318,58 @@ class CyberGame {
     this.elements.hudGameMode.innerText = modeText;
     this.elements.bestOfVerdict.innerText = modeText;
 
-    // Set HUD AI Difficulty
-    const currentDiff = this.store.data.aiDifficulty || 'normal';
-    this.elements.hudAiDifficulty.innerText = currentDiff.toUpperCase();
-    if (currentDiff === 'nightmare') {
-      this.elements.hudAiDifficulty.className = 'hud-value text-danger';
+    // Apply Game Type specific configurations to Gameplay HUD
+    if (gameType === 'dual') {
+      // Hide AI Core HUD
+      this.elements.hudDifficultyContainer.classList.add('hidden');
+      
+      // Update Pilot 1 label to Pilot A
+      this.elements.hudPilot1Label.innerText = "PILOT A:";
+      
+      // Show Pilot B HUD
+      this.elements.hudPilot2Container.classList.remove('hidden');
+      this.elements.hudPlayer2Name.innerText = pilot2Name;
+
+      // Update Scoreboard labels
+      this.elements.scorePlayerLabel.innerText = pilotName;
+      this.elements.scoreComputerLabel.innerText = pilot2Name;
+
+      // Update Battlefield card side labels
+      this.elements.cardPlayerLabel.innerText = `${pilotName} SIDE`;
+      this.elements.cardComputerLabel.innerText = `${pilot2Name} SIDE`;
+
+      // Enable and update turn instruction banner
+      this.elements.choicesTurnInstruction.classList.remove('hidden');
+      this.updateChoicesInstruction();
     } else {
-      this.elements.hudAiDifficulty.className = 'hud-value text-success';
+      // Show AI Core HUD
+      this.elements.hudDifficultyContainer.classList.remove('hidden');
+      
+      // Reset Pilot 1 label
+      this.elements.hudPilot1Label.innerText = "PILOT:";
+      
+      // Hide Pilot B HUD
+      this.elements.hudPilot2Container.classList.add('hidden');
+
+      // Reset Scoreboard labels
+      this.elements.scorePlayerLabel.innerText = "PILOT";
+      this.elements.scoreComputerLabel.innerText = "CPU_AI";
+
+      // Reset Battlefield card side labels
+      this.elements.cardPlayerLabel.innerText = "PILOT SIDE";
+      this.elements.cardComputerLabel.innerText = "CPU CORE";
+
+      // Hide choices turn instruction banner
+      this.elements.choicesTurnInstruction.classList.add('hidden');
+
+      // Set HUD AI Difficulty
+      const currentDiff = this.store.data.aiDifficulty || 'normal';
+      this.elements.hudAiDifficulty.innerText = currentDiff.toUpperCase();
+      if (currentDiff === 'nightmare') {
+        this.elements.hudAiDifficulty.className = 'hud-value text-danger';
+      } else {
+        this.elements.hudAiDifficulty.className = 'hud-value text-success';
+      }
     }
 
     this.renderScoreboard();
@@ -1249,6 +1390,10 @@ class CyberGame {
     this.canPlayerChoose = true;
     this.isRoundInProgress = false;
 
+    // Reset P1/P2 selections
+    this.p1Choice = null;
+    this.p2Choice = null;
+
     // Reset card UI classes
     this.elements.playerBattleCard.className = 'battle-card';
     this.elements.computerBattleCard.className = 'battle-card';
@@ -1259,15 +1404,25 @@ class CyberGame {
     this.elements.computerPlaceholder.classList.remove('hidden');
     this.elements.computerMoveInfo.classList.add('hidden');
 
-    // Reset computer matrix anim
-    this.elements.computerPlaceholder.innerHTML = `
-      <div class="matrix-loader">
-        <div class="matrix-bar"></div>
-        <div class="matrix-bar"></div>
-        <div class="matrix-bar"></div>
-      </div>
-      <span class="pulse-text">CALCULATING MOVE</span>
-    `;
+    const gameType = this.store.data.gameType || 'single';
+
+    if (gameType === 'single') {
+      // Reset computer matrix anim
+      this.elements.computerPlaceholder.innerHTML = `
+        <div class="matrix-loader">
+          <div class="matrix-bar"></div>
+          <div class="matrix-bar"></div>
+          <div class="matrix-bar"></div>
+        </div>
+        <span class="pulse-text">CALCULATING MOVE</span>
+      `;
+    } else {
+      // 2P Mode placeholder
+      this.elements.computerPlaceholder.innerHTML = `
+        <span class="pulse-text">WAITING FOR MOVE</span>
+      `;
+      this.updateChoicesInstruction();
+    }
 
     // Reset banners
     this.elements.versusText.classList.remove('hidden');
@@ -1663,6 +1818,218 @@ class CyberGame {
       `;
       this.elements.historyContainer.appendChild(div);
     });
+  }
+
+  /**
+   * Handle choice input from a player.
+   * @param {string} choice - Rock, Paper, or Scissors.
+   * @param {number} playerNum - 1 or 2.
+   */
+  handlePlayerChoice(choice, playerNum) {
+    if (!this.canPlayerChoose || this.isRoundInProgress) return;
+
+    const gameType = this.store.data.gameType || 'single';
+
+    if (gameType === 'single') {
+      this.playRound(choice);
+    } else {
+      // 2-Player mode turn flow
+      if (playerNum === 1) {
+        if (this.p1Choice !== null) return; // already chosen
+        this.p1Choice = choice;
+        this.synth.playClick();
+        
+        // Show Locked State on Player 1 Card
+        this.elements.playerPlaceholder.classList.add('hidden');
+        this.elements.playerMoveInfo.classList.remove('hidden');
+        const existingSVG = this.elements.playerMoveInfo.querySelector('.card-icon-svg');
+        if (existingSVG) existingSVG.remove();
+        
+        // Locked SVG
+        this.elements.playerMoveInfo.insertAdjacentHTML('afterbegin', this._getLockedSvg('text-cyan'));
+        this.elements.playerMoveTitle.innerText = "LOCKED";
+        const pDetail = this.elements.playerMoveInfo.querySelector('.move-detail');
+        if (pDetail) pDetail.innerText = "PROTOCOL SECURED";
+      } else {
+        if (this.p2Choice !== null) return; // already chosen
+        this.p2Choice = choice;
+        this.synth.playClick();
+        
+        // Show Locked State on Player 2 Card
+        this.elements.computerPlaceholder.classList.add('hidden');
+        this.elements.computerMoveInfo.classList.remove('hidden');
+        const existingSVG = this.elements.computerMoveInfo.querySelector('.card-icon-svg');
+        if (existingSVG) existingSVG.remove();
+        
+        // Locked SVG
+        this.elements.computerMoveInfo.insertAdjacentHTML('afterbegin', this._getLockedSvg('text-danger'));
+        this.elements.computerMoveTitle.innerText = "LOCKED";
+        const cDetail = this.elements.computerMoveInfo.querySelector('.move-detail');
+        if (cDetail) cDetail.innerText = "PROTOCOL SECURED";
+      }
+
+      // Check if both have chosen
+      if (this.p1Choice !== null && this.p2Choice !== null) {
+        // Resolve the round
+        this.playRoundDual(this.p1Choice, this.p2Choice);
+      } else {
+        // Update turn guidance label
+        this.updateChoicesInstruction();
+      }
+    }
+  }
+
+  _getLockedSvg(colorClass) {
+    return `
+      <svg viewBox="0 0 24 24" class="card-icon-svg ${colorClass} lock-pulse">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    `;
+  }
+
+  updateChoicesInstruction() {
+    const gameType = this.store.data.gameType || 'single';
+    if (gameType === 'single') {
+      if (this.elements.choicesTurnInstruction) {
+        this.elements.choicesTurnInstruction.classList.add('hidden');
+      }
+      return;
+    }
+
+    if (this.elements.choicesTurnInstruction) {
+      this.elements.choicesTurnInstruction.classList.remove('hidden');
+    }
+
+    const name1 = this.store.data.playerName || 'USER_01';
+    const name2 = this.store.data.player2Name || 'USER_02';
+
+    if (this.elements.choicesTurnInstruction) {
+      if (this.p1Choice === null && this.p2Choice === null) {
+        this.elements.choicesTurnInstruction.innerText = `${name1}: CHOOSE PROTOCOL (A/S/D) | ${name2}: CHOOSE PROTOCOL (J/K/L)`;
+      } else if (this.p1Choice !== null && this.p2Choice === null) {
+        this.elements.choicesTurnInstruction.innerText = `WAITING FOR ${name2} (Keys: J=Shield, K=Grid, L=Claw)`;
+      } else if (this.p1Choice === null && this.p2Choice !== null) {
+        this.elements.choicesTurnInstruction.innerText = `WAITING FOR ${name1} (Keys: A=Shield, S=Grid, D=Claw)`;
+      }
+    }
+  }
+
+  playRoundDual(p1Choice, p2Choice) {
+    this.canPlayerChoose = false;
+    this.isRoundInProgress = true;
+    clearInterval(this.timerInterval);
+
+    // Disable choices buttons visual
+    this.elements.choicesPanel.style.pointerEvents = 'none';
+    this.elements.choicesPanel.style.opacity = '0.5';
+    if (this.elements.choicesTurnInstruction) {
+      this.elements.choicesTurnInstruction.classList.add('hidden');
+    }
+
+    // Evaluate outcome logic
+    let result = 'draw'; // from P1 perspective
+    let explanation = 'Identical threat signatures detected.';
+
+    if (p1Choice === p2Choice) {
+      result = 'draw';
+    } else if (this.rules[p1Choice] === p2Choice) {
+      result = 'win';
+      explanation = `${this.moveTitles[p1Choice]} blocks/deletes ${this.moveTitles[p2Choice]}`;
+    } else {
+      result = 'lose';
+      explanation = `${this.moveTitles[p2Choice]} blocks/deletes ${this.moveTitles[p1Choice]}`;
+    }
+
+    // Update scores and write metrics
+    if (result === 'win') {
+      this.store.data.scores.player++;
+    } else if (result === 'lose') {
+      this.store.data.scores.computer++;
+    } else {
+      this.store.data.scores.draw++;
+    }
+
+    this.store.recordRound(p1Choice, p2Choice, result);
+
+    // Trigger battlefield animations and render
+    this.revealChoicesDual(p1Choice, p2Choice, result, explanation);
+  }
+
+  revealChoicesDual(p1Choice, p2Choice, outcome, explanation) {
+    const CHOICE_SVGS = {
+      Rock: `
+        <svg viewBox="0 0 24 24" class="card-icon-svg text-cyan">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 6v10" stroke="currentColor" stroke-width="2"/>
+          <path d="M9 11h6" stroke="currentColor" stroke-width="2"/>
+        </svg>`,
+      Paper: `
+        <svg viewBox="0 0 24 24" class="card-icon-svg text-purple">
+          <rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M9 3v18" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+          <path d="M15 3v18" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+          <path d="M3 9h18" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+          <path d="M3 15h18" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+          <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/>
+        </svg>`,
+      Scissors: `
+        <svg viewBox="0 0 24 24" class="card-icon-svg text-danger">
+          <path d="M6 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M6 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M20 4L8.5 11" stroke="currentColor" stroke-width="2"/>
+          <path d="M20 20L8.5 13" stroke="currentColor" stroke-width="2"/>
+          <path d="M16 12l5 0" stroke="currentColor" stroke-width="2"/>
+        </svg>`
+    };
+
+    // Glitch loading simulation (we show glitch animations on BOTH cards simultaneously before reveal)
+    let tickCount = 0;
+    const tickInterval = setInterval(() => {
+      tickCount++;
+      const randMove1 = this.choices[Math.floor(Math.random() * this.choices.length)];
+      const randMove2 = this.choices[Math.floor(Math.random() * this.choices.length)];
+
+      this.elements.playerPlaceholder.innerHTML = `
+        <div class="card-placeholder">
+          ${CHOICE_SVGS[randMove1]}
+          <span class="pulse-text">DECIPHERING...</span>
+        </div>
+      `;
+      this.elements.computerPlaceholder.innerHTML = `
+        <div class="card-placeholder">
+          ${CHOICE_SVGS[randMove2]}
+          <span class="pulse-text">DECIPHERING...</span>
+        </div>
+      `;
+
+      if (tickCount >= 6) {
+        clearInterval(tickInterval);
+
+        // Finalize Player 1 Choice Display
+        this.elements.playerPlaceholder.classList.add('hidden');
+        this.elements.playerMoveInfo.classList.remove('hidden');
+        const existingP1 = this.elements.playerMoveInfo.querySelector('.card-icon-svg');
+        if (existingP1) existingP1.remove();
+        this.elements.playerMoveInfo.insertAdjacentHTML('afterbegin', CHOICE_SVGS[p1Choice]);
+        this.elements.playerMoveTitle.innerText = this.moveTitles[p1Choice];
+        const p1Detail = this.elements.playerMoveInfo.querySelector('.move-detail');
+        if (p1Detail) p1Detail.innerText = this.moveSubtitles[p1Choice];
+
+        // Finalize Player 2 Choice Display
+        this.elements.computerPlaceholder.classList.add('hidden');
+        this.elements.computerMoveInfo.classList.remove('hidden');
+        const existingP2 = this.elements.computerMoveInfo.querySelector('.card-icon-svg');
+        if (existingP2) existingP2.remove();
+        this.elements.computerMoveInfo.insertAdjacentHTML('afterbegin', CHOICE_SVGS[p2Choice]);
+        this.elements.computerMoveTitle.innerText = this.moveTitles[p2Choice];
+        const p2Detail = this.elements.computerMoveInfo.querySelector('.move-detail');
+        if (p2Detail) p2Detail.innerText = this.moveSubtitles[p2Choice];
+
+        // Evaluate screen outcomes
+        this.resolveFinalOutcome(outcome, explanation);
+      }
+    }, 100);
   }
 
   /**

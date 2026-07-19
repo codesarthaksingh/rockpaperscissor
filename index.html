@@ -58,12 +58,36 @@
         </header>
 
         <main class="menu-content">
+          <!-- Game Type Selector -->
+          <div class="config-section">
+            <span class="config-label">GAME TYPE</span>
+            <div class="game-type-options" role="radiogroup" aria-label="Game Type">
+              <button class="type-btn active" data-type="single" role="radio" aria-checked="true">
+                <span class="type-title">SINGLE PILOT</span>
+                <span class="type-desc">VS CPU AI Core</span>
+              </button>
+              <button class="type-btn" data-type="dual" role="radio" aria-checked="false">
+                <span class="type-title">DUAL PILOT</span>
+                <span class="type-desc">Local 2-Player</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Player config -->
-          <div class="input-group">
-            <label for="player-name-input">PILOT IDENTIFICATION (NAME)</label>
-            <div class="input-wrapper">
-              <input type="text" id="player-name-input" maxlength="12" placeholder="USER_01" value="USER_01">
-              <span class="input-glow"></span>
+          <div class="pilots-config-grid" id="pilots-config-grid">
+            <div class="input-group" id="pilot1-input-group">
+              <label for="player-name-input" id="pilot1-name-label">PILOT IDENTIFICATION (NAME)</label>
+              <div class="input-wrapper">
+                <input type="text" id="player-name-input" maxlength="12" placeholder="USER_01" value="USER_01">
+                <span class="input-glow"></span>
+              </div>
+            </div>
+            <div class="input-group hidden" id="pilot2-input-group">
+              <label for="player2-name-input">PILOT 2 IDENTIFICATION (NAME)</label>
+              <div class="input-wrapper">
+                <input type="text" id="player2-name-input" maxlength="12" placeholder="USER_02" value="USER_02">
+                <span class="input-glow"></span>
+              </div>
             </div>
           </div>
 
@@ -99,7 +123,7 @@
           </div>
 
           <!-- AI Difficulty Config -->
-          <div class="config-section">
+          <div class="config-section" id="ai-difficulty-section">
             <span class="config-label">CPU CORE DIFFICULTY</span>
             <div class="diff-options" role="radiogroup" aria-label="AI Difficulty">
               <button class="diff-btn active" data-difficulty="normal" role="radio" aria-checked="true">
@@ -140,17 +164,21 @@
         <!-- Game HUD Header -->
         <header class="game-hud">
           <div class="hud-left">
-            <div class="hud-pilot">
-              <span class="hud-label">PILOT:</span>
+            <div class="hud-pilot" id="hud-pilot-1-container">
+              <span class="hud-label" id="hud-pilot-1-label">PILOT:</span>
               <span id="hud-player-name" class="hud-value">USER_01</span>
             </div>
             <div class="hud-mode">
               <span class="hud-label">MODE:</span>
               <span id="hud-game-mode" class="hud-value">UNLIMITED</span>
             </div>
-            <div class="hud-difficulty">
+            <div class="hud-difficulty" id="hud-difficulty-container">
               <span class="hud-label">AI CORE:</span>
               <span id="hud-ai-difficulty" class="hud-value text-success">NORMAL</span>
+            </div>
+            <div class="hud-pilot hidden" id="hud-pilot-2-container">
+              <span class="hud-label">PILOT 2:</span>
+              <span id="hud-player2-name" class="hud-value">USER_02</span>
             </div>
           </div>
           
@@ -208,7 +236,7 @@
           </div>
           
           <div class="score-card computer-score-card">
-            <span class="score-label">CPU_AI</span>
+            <span class="score-label" id="score-computer-label">CPU_AI</span>
             <span class="score-value" id="computer-score">0</span>
             <div class="score-bar"><div class="score-bar-fill" id="computer-win-indicator"></div></div>
           </div>
@@ -228,7 +256,7 @@
           <div class="battle-card" id="player-battle-card">
             <div class="card-glow-overlay"></div>
             <div class="card-inner">
-              <span class="card-side">PILOT SIDE</span>
+              <span class="card-side" id="card-player-label">PILOT SIDE</span>
               <div class="card-placeholder" id="player-card-icon-placeholder">
                 <span class="pulse-text">WAITING FOR MOVE</span>
               </div>
@@ -253,7 +281,7 @@
           <div class="battle-card" id="computer-battle-card">
             <div class="card-glow-overlay"></div>
             <div class="card-inner">
-              <span class="card-side">CPU CORE</span>
+              <span class="card-side" id="card-computer-label">CPU CORE</span>
               <div class="card-placeholder" id="computer-card-icon-placeholder">
                 <div class="matrix-loader">
                   <div class="matrix-bar"></div>
@@ -270,6 +298,11 @@
             <div class="card-status-bar">STATUS: SECURE</div>
           </div>
         </section>
+
+        <!-- Dynamic Instruction Label (for 2-Player turn guidance or keyboard tips) -->
+        <div id="choices-turn-instruction" class="choices-turn-instruction hidden">
+          PILOT A: SELECT PROTOCOL (Keys: A=Shield, S=Grid, D=Claw)
+        </div>
 
         <!-- Player Choices Buttons Panel -->
         <section class="choice-controls" id="choices-panel">

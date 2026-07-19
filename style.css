@@ -2034,3 +2034,94 @@ input:focus-visible, button:focus-visible {
     gap: 8px;
   }
 }
+
+/* --- GAME TYPE SELECTOR --- */
+.game-type-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.type-btn {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  border-radius: var(--border-radius-sm);
+  padding: 12px;
+  cursor: pointer;
+  color: var(--text-light);
+  transition: all var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.type-btn:hover {
+  border-color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.05);
+}
+
+.type-btn.active {
+  border-color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.15);
+  box-shadow: var(--neon-glow);
+}
+
+.type-title {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.type-desc {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* --- PILOTS CONFIG GRID --- */
+.pilots-config-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  transition: all var(--transition-medium);
+}
+
+.pilots-config-grid.dual-layout {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 768px) {
+  .pilots-config-grid.dual-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- CHOICES TURN INSTRUCTION --- */
+.choices-turn-instruction {
+  text-align: center;
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--color-primary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  animation: pulse-instruction 2s infinite ease-in-out;
+  text-shadow: 0 0 5px rgba(var(--color-primary-rgb), 0.5);
+}
+
+@keyframes pulse-instruction {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; color: var(--color-info); text-shadow: 0 0 10px rgba(var(--color-info-rgb), 0.8); }
+}
+
+.lock-pulse {
+  animation: lockPulseAnimation 1.5s infinite alternate ease-in-out;
+}
+
+@keyframes lockPulseAnimation {
+  from { filter: drop-shadow(0 0 2px currentColor); transform: scale(1); }
+  to { filter: drop-shadow(0 0 8px currentColor); transform: scale(1.05); }
+}
