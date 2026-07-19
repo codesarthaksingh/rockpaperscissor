@@ -781,7 +781,7 @@ class CyberGame {
       overComputerScore: document.getElementById('over-computer-score'),
       overRoundsTotal: document.getElementById('over-rounds-total'),
       overRatingPercent: document.getElementById('over-rating-percent'),
-      overEvaluationText: document.getElementById('over-evaluation-text'),
+      overEvaluationText: document.getElementById('game-over-evaluation-text'),
       gameOverReplayBtn: document.getElementById('game-over-replay-btn'),
       gameOverMenuBtn: document.getElementById('game-over-menu-btn'),
 
