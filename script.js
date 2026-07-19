@@ -191,6 +191,7 @@ class CyberGameStats {
       theme: 'purple',
       volume: 70,
       timerEnabled: true,
+      aiDifficulty: 'normal',
       scores: {
         player: 0,
         computer: 0,
@@ -328,6 +329,7 @@ class CyberGameStats {
       theme: 'purple',
       volume: 70,
       timerEnabled: true,
+      aiDifficulty: 'normal',
       scores: {
         player: 0,
         computer: 0,
@@ -466,6 +468,131 @@ class NeonParticleSystem {
 }
 
 /* ==========================================================================
+   3.5 AI PREDICTOR NATIVE JS FALLBACK
+   ========================================================================== */
+
+/**
+ * Native JavaScript equivalent of the C++ sequence predictor (Trie structure).
+ */
+class CyberAIPredictor {
+  /**
+   * Initialize predictor.
+   */
+  constructor() {
+    this.root = { children: {}, nextMoveCounts: {} };
+    this.overallFrequencies = {};
+    this.totalRounds = 0;
+  }
+
+  /**
+   * Wipe sequence history telemetry.
+   */
+  reset() {
+    this.root = { children: {}, nextMoveCounts: {} };
+    this.overallFrequencies = {};
+    this.totalRounds = 0;
+  }
+
+  /**
+   * Record player move sequence in Trie.
+   * @param {string} m1 - Player move 2 rounds ago.
+   * @param {string} m2 - Player move 1 round ago.
+   * @param {string} nextMove - Player's current choice.
+   */
+  recordMoveSequence(m1, m2, nextMove) {
+    if (!nextMove) return;
+
+    if (!this.overallFrequencies[nextMove]) {
+      this.overallFrequencies[nextMove] = 0;
+    }
+    this.overallFrequencies[nextMove]++;
+    this.totalRounds++;
+
+    // 1. Store length 1 sequence: root -> m2 -> nextMove
+    if (m2) {
+      if (!this.root.children[m2]) {
+        this.root.children[m2] = { children: {}, nextMoveCounts: {} };
+      }
+      const n2 = this.root.children[m2];
+      if (!n2.nextMoveCounts[nextMove]) {
+        n2.nextMoveCounts[nextMove] = 0;
+      }
+      n2.nextMoveCounts[nextMove]++;
+
+      // 2. Store length 2 sequence: root -> m1 -> m2 -> nextMove
+      if (m1) {
+        if (!this.root.children[m1]) {
+          this.root.children[m1] = { children: {}, nextMoveCounts: {} };
+        }
+        const n1 = this.root.children[m1];
+        if (!n1.children[m2]) {
+          n1.children[m2] = { children: {}, nextMoveCounts: {} };
+        }
+        const n2Node = n1.children[m2];
+        if (!n2Node.nextMoveCounts[nextMove]) {
+          n2Node.nextMoveCounts[nextMove] = 0;
+        }
+        n2Node.nextMoveCounts[nextMove]++;
+      }
+    }
+  }
+
+  /**
+   * Predict next player choice.
+   * @param {string} last1 - Previous round player choice.
+   * @param {string} last2 - Two rounds ago player choice.
+   * @returns {string} Prediction choice.
+   */
+  predictNextMove(last1, last2) {
+    // Stage 1: Try length-2 pattern lookup (last2 -> last1 -> ?)
+    if (last2 && last1) {
+      const n1 = this.root.children[last2];
+      if (n1) {
+        const n2 = n1.children[last1];
+        if (n2) {
+          const prediction = this.getMostFrequentMove(n2.nextMoveCounts);
+          if (prediction) return prediction;
+        }
+      }
+    }
+
+    // Stage 2: Fallback to length-1 pattern lookup (last1 -> ?)
+    if (last1) {
+      const n1 = this.root.children[last1];
+      if (n1) {
+        const prediction = this.getMostFrequentMove(n1.nextMoveCounts);
+        if (prediction) return prediction;
+      }
+    }
+
+    // Stage 3: Fallback to player's overall most frequent move
+    const prediction = this.getMostFrequentMove(this.overallFrequencies);
+    if (prediction) return prediction;
+
+    // Stage 4: Ultimate fallback to random choice
+    const options = ["Rock", "Paper", "Scissors"];
+    return options[Math.floor(Math.random() * 3)];
+  }
+
+  /**
+   * Extract most frequent key in counts map.
+   * @param {Object} counts - Map of string keys to counts.
+   * @returns {string} Best key.
+   */
+  getMostFrequentMove(counts) {
+    let bestMove = "";
+    let maxCount = -1;
+    for (const key in counts) {
+      if (counts[key] > maxCount) {
+        maxCount = counts[key];
+        bestMove = key;
+      }
+    }
+    return bestMove;
+  }
+}
+
+/* ==========================================================================
    4. CORE GAME ENGINE
    ========================================================================== */
 
@@ -529,8 +656,44 @@ class CyberGame {
     // Load initial configurations from storage
     this._applyConfig();
 
+    // AI Sequence Predictor initialization
+    this.playerMoveHistory = [];
+    this.aiPredictor = null;
+    this._loadWasmScript();
+
     // Start boot sequence
     this.triggerBootSequence();
+  }
+
+  /**
+   * Load the compiled Emscripten WebAssembly glue script dynamically.
+   * @private
+   */
+  _loadWasmScript() {
+    const script = document.createElement('script');
+    script.src = 'cyber_ai.js';
+    script.onload = () => this._initAIEngine();
+    script.onerror = () => this._initAIEngine(); // Fallback to JS if Wasm script doesn't exist
+    document.head.appendChild(script);
+  }
+
+  /**
+   * Instantiate C++ Wasm class, or fall back to native JS class.
+   * @private
+   */
+  _initAIEngine() {
+    if (typeof Module !== 'undefined' && Module.CyberPredictor) {
+      try {
+        this.aiPredictor = new Module.CyberPredictor();
+        console.log("CYBER CORE: WebAssembly C++ prediction engine loaded.");
+      } catch (e) {
+        console.warn("CYBER CORE: Wasm creation failed. Falling back to native JS engine.", e);
+        this.aiPredictor = new CyberAIPredictor();
+      }
+    } else {
+      console.log("CYBER CORE: Native JS prediction engine initialized.");
+      this.aiPredictor = new CyberAIPredictor();
+    }
   }
 
   /**
@@ -558,10 +721,12 @@ class CyberGame {
       modeButtons: document.querySelectorAll('.mode-btn'),
       timerToggle: document.getElementById('timer-toggle'),
       startGameBtn: document.getElementById('start-game-btn'),
+      diffButtons: document.querySelectorAll('.diff-options .diff-btn'),
 
       // Gameplay HUD
       hudPlayerName: document.getElementById('hud-player-name'),
       hudGameMode: document.getElementById('hud-game-mode'),
+      hudAiDifficulty: document.getElementById('hud-ai-difficulty'),
       hudStatsBtn: document.getElementById('hud-stats-btn'),
       hudSettingsBtn: document.getElementById('hud-settings-btn'),
       hudSoundBtn: document.getElementById('hud-sound-btn'),
@@ -627,6 +792,8 @@ class CyberGame {
       volumeSlider: document.getElementById('volume-slider'),
       volumeValue: document.getElementById('volume-indicator-value'),
       resetAllBtn: document.getElementById('settings-reset-all-btn'),
+      settingsDiffNormal: document.getElementById('settings-diff-normal'),
+      settingsDiffNightmare: document.getElementById('settings-diff-nightmare'),
 
       // Stats Modal
       statsModal: document.getElementById('stats-modal'),
@@ -668,8 +835,29 @@ class CyberGame {
     this.elements.volumeValue.innerText = `${data.volume}%`;
     this.synth.setVolume(data.volume);
 
-    // Timer switch
+     // Timer switch
     this.elements.timerToggle.checked = data.timerEnabled;
+
+    // Difficulty Core
+    const diff = data.aiDifficulty || 'normal';
+    this.elements.diffButtons.forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.getAttribute('data-difficulty') === diff) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+      } else {
+        btn.setAttribute('aria-checked', 'false');
+      }
+    });
+    
+    // Settings modal difficulty sync
+    if (diff === 'nightmare') {
+      this.elements.settingsDiffNormal.classList.remove('active');
+      this.elements.settingsDiffNightmare.classList.add('active');
+    } else {
+      this.elements.settingsDiffNormal.classList.add('active');
+      this.elements.settingsDiffNightmare.classList.remove('active');
+    }
   }
 
   /**
@@ -696,6 +884,64 @@ class CyberGame {
         this.currentMode = btn.getAttribute('data-mode');
       });
     });
+
+    // Menu difficulty buttons configuration
+    this.elements.diffButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.synth.playClick();
+        this.elements.diffButtons.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+        
+        const diff = btn.getAttribute('data-difficulty');
+        this.store.data.aiDifficulty = diff;
+        this.store.save();
+        
+        // Sync to settings modal too
+        if (diff === 'nightmare') {
+          this.elements.settingsDiffNormal.classList.remove('active');
+          this.elements.settingsDiffNightmare.classList.add('active');
+        } else {
+          this.elements.settingsDiffNormal.classList.add('active');
+          this.elements.settingsDiffNightmare.classList.remove('active');
+        }
+      });
+    });
+
+    // Settings Modal difficulty toggles mid-game
+    const setDifficultyMidGame = (diff) => {
+      this.synth.playClick();
+      this.store.data.aiDifficulty = diff;
+      this.store.save();
+      
+      // Update HUD and class
+      this.elements.hudAiDifficulty.innerText = diff.toUpperCase();
+      if (diff === 'nightmare') {
+        this.elements.hudAiDifficulty.className = 'hud-value text-danger';
+        this.elements.settingsDiffNormal.classList.remove('active');
+        this.elements.settingsDiffNightmare.classList.add('active');
+      } else {
+        this.elements.hudAiDifficulty.className = 'hud-value text-success';
+        this.elements.settingsDiffNormal.classList.add('active');
+        this.elements.settingsDiffNightmare.classList.remove('active');
+      }
+
+      // Sync menu buttons
+      this.elements.diffButtons.forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-checked', 'false');
+        if (b.getAttribute('data-difficulty') === diff) {
+          b.classList.add('active');
+          b.setAttribute('aria-checked', 'true');
+        }
+      });
+    };
+
+    this.elements.settingsDiffNormal.addEventListener('click', () => setDifficultyMidGame('normal'));
+    this.elements.settingsDiffNightmare.addEventListener('click', () => setDifficultyMidGame('nightmare'));
 
     // Start Simulation Button
     this.elements.startGameBtn.addEventListener('click', () => this.startGame());
@@ -787,6 +1033,9 @@ class CyberGame {
       
       // Reset match metrics for the replay
       this.currentRound = 1;
+      this.playerMoveHistory = [];
+      if (this.aiPredictor) this.aiPredictor.reset();
+
       this.elements.roundNum.innerText = this.currentRound;
       this.store.resetRuntimeScores();
       this.renderScoreboard();
@@ -944,6 +1193,9 @@ class CyberGame {
     
     // Reset transient round variables
     this.currentRound = 1;
+    this.playerMoveHistory = [];
+    if (this.aiPredictor) this.aiPredictor.reset();
+
     this.store.resetRuntimeScores();
     this.resetMatchState();
 
@@ -962,6 +1214,15 @@ class CyberGame {
     
     this.elements.hudGameMode.innerText = modeText;
     this.elements.bestOfVerdict.innerText = modeText;
+
+    // Set HUD AI Difficulty
+    const currentDiff = this.store.data.aiDifficulty || 'normal';
+    this.elements.hudAiDifficulty.innerText = currentDiff.toUpperCase();
+    if (currentDiff === 'nightmare') {
+      this.elements.hudAiDifficulty.className = 'hud-value text-danger';
+    } else {
+      this.elements.hudAiDifficulty.className = 'hud-value text-success';
+    }
 
     this.renderScoreboard();
     this.renderHistoryLog();
@@ -1070,8 +1331,23 @@ class CyberGame {
     this.elements.choicesPanel.style.pointerEvents = 'none';
     this.elements.choicesPanel.style.opacity = '0.5';
 
-    // 1. Resolve Computer move
-    const computerMove = this.choices[Math.floor(Math.random() * this.choices.length)];
+    // 1. Resolve Computer move (Random vs Nightmare)
+    let computerMove = "Rock";
+    const currentDiff = this.store.data.aiDifficulty || 'normal';
+
+    if (currentDiff === 'nightmare' && this.aiPredictor) {
+      const last1 = this.playerMoveHistory[this.playerMoveHistory.length - 1] || "";
+      const last2 = this.playerMoveHistory[this.playerMoveHistory.length - 2] || "";
+      const predictedPlayerMove = this.aiPredictor.predictNextMove(last1, last2);
+      
+      // Computer plays counter to predicted move
+      if (predictedPlayerMove === 'Rock') computerMove = 'Paper';
+      else if (predictedPlayerMove === 'Paper') computerMove = 'Scissors';
+      else computerMove = 'Rock';
+    } else {
+      // Normal: standard random choice
+      computerMove = this.choices[Math.floor(Math.random() * this.choices.length)];
+    }
 
     // 2. Evaluate outcome logic
     let result = 'draw';
@@ -1097,6 +1373,17 @@ class CyberGame {
     }
 
     this.store.recordRound(playerMove, computerMove, result);
+
+    // Record player move history and train AI sequence
+    if (this.aiPredictor) {
+      const last1 = this.playerMoveHistory[this.playerMoveHistory.length - 1] || "";
+      const last2 = this.playerMoveHistory[this.playerMoveHistory.length - 2] || "";
+      this.aiPredictor.recordMoveSequence(last2, last1, playerMove);
+    }
+    this.playerMoveHistory.push(playerMove);
+    if (this.playerMoveHistory.length > 2) {
+      this.playerMoveHistory.shift();
+    }
 
     // 4. Trigger battlefield animations and render
     this.revealChoices(playerMove, computerMove, result, explanation);
@@ -1269,6 +1556,11 @@ class CyberGame {
   abortGame() {
     this.synth.playLose();
     clearInterval(this.timerInterval);
+    
+    // Clear history logs
+    this.playerMoveHistory = [];
+    if (this.aiPredictor) this.aiPredictor.reset();
+
     this.resetMatchState();
     this.transitionScreen(this.elements.gameplay, this.elements.menu);
   }

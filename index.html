@@ -98,6 +98,21 @@
             </label>
           </div>
 
+          <!-- AI Difficulty Config -->
+          <div class="config-section">
+            <span class="config-label">CPU CORE DIFFICULTY</span>
+            <div class="diff-options" role="radiogroup" aria-label="AI Difficulty">
+              <button class="diff-btn active" data-difficulty="normal" role="radio" aria-checked="true">
+                <span class="diff-title">NORMAL</span>
+                <span class="diff-desc">Random Selections</span>
+              </button>
+              <button class="diff-btn" data-difficulty="nightmare" role="radio" aria-checked="false">
+                <span class="diff-title">NIGHTMARE</span>
+                <span class="diff-desc">Trie Predictive Core</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Start Action -->
           <button id="start-game-btn" class="cyber-btn primary-pulse">
             <span class="btn-text">START SIMULATION</span>
@@ -132,6 +147,10 @@
             <div class="hud-mode">
               <span class="hud-label">MODE:</span>
               <span id="hud-game-mode" class="hud-value">UNLIMITED</span>
+            </div>
+            <div class="hud-difficulty">
+              <span class="hud-label">AI CORE:</span>
+              <span id="hud-ai-difficulty" class="hud-value text-success">NORMAL</span>
             </div>
           </div>
           
@@ -412,6 +431,19 @@
             <div class="slider-container">
               <input type="range" id="volume-slider" min="0" max="100" value="70">
               <span class="slider-fill"></span>
+            </div>
+          </div>
+
+          <!-- CPU Difficulty adjustments mid-game -->
+          <div class="modal-section">
+            <span class="section-heading">CPU CORE DIFFICULTY</span>
+            <div class="diff-options theme-diff-options">
+              <button class="diff-btn active" id="settings-diff-normal" data-difficulty="normal" aria-label="Normal Difficulty">
+                NORMAL
+              </button>
+              <button class="diff-btn" id="settings-diff-nightmare" data-difficulty="nightmare" aria-label="Nightmare Difficulty">
+                NIGHTMARE
+              </button>
             </div>
           </div>
 
