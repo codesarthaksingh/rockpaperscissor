@@ -727,6 +727,7 @@ class CyberGame {
       hudPlayerName: document.getElementById('hud-player-name'),
       hudGameMode: document.getElementById('hud-game-mode'),
       hudAiDifficulty: document.getElementById('hud-ai-difficulty'),
+      hudExitBtn: document.getElementById('hud-exit-btn'),
       hudStatsBtn: document.getElementById('hud-stats-btn'),
       hudSettingsBtn: document.getElementById('hud-settings-btn'),
       hudSoundBtn: document.getElementById('hud-sound-btn'),
@@ -968,6 +969,12 @@ class CyberGame {
     });
 
     // HUD settings, stats and sound toggles
+    this.elements.hudExitBtn.addEventListener('click', () => {
+      if (confirm('CRITICAL ACTION: Abort current combat session and start a new game?')) {
+        this.abortGame();
+      }
+    });
+
     this.elements.hudSettingsBtn.addEventListener('click', () => this.toggleModal(this.elements.settingsModal, true));
     this.elements.settingsCloseBtn.addEventListener('click', () => this.toggleModal(this.elements.settingsModal, false));
     this.elements.settingsOverlay.addEventListener('click', () => this.toggleModal(this.elements.settingsModal, false));
